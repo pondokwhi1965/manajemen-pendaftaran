@@ -1,0 +1,8 @@
+{
+  "name": "Manajemen Pendaftaran Santri Baru",
+  "description": "Aplikasi Pengelolaan Pembayaran Santri Baru Pondok Pesantren Wahyu Hidayatul Islam",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

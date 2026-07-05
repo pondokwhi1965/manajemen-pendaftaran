@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "Santri": {
+      "title": "Santri",
+      "description": "Data calon santri yang mendaftar di pesantren.",
+      "type": "object",
+      "properties": {
+        "nomorPendaftaran": { "type": "string" },
+        "nik": { "type": "string" },
+        "nama": { "type": "string" },
+        "jenisKelamin": { "type": "string", "enum": ["Laki-laki", "Perempuan"] },
+        "tempatLahir": { "type": "string" },
+        "tanggalLahir": { "type": "string" },
+        "alamat": { "type": "string" },
+        "desa": { "type": "string" },
+        "kecamatan": { "type": "string" },
+        "kabupatenKota": { "type": "string" },
+        "provinsi": { "type": "string" },
+        "namaAyah": { "type": "string" },
+        "namaIbu": { "type": "string" },
+        "nomorHpOrangTua": { "type": "string" },
+        "asalSekolah": { "type": "string" },
+        "jenjang": { "type": "string", "enum": ["SDI AL-HIDAYAH", "SMP AL-HIDAYAH", "SMK AL-HIDAYAH"] },
+        "gelombangPendaftaran": { "type": "string", "enum": ["Gelombang 1", "Gelombang 2", "Gelombang 3"] },
+        "status": { "type": "string", "enum": ["Belum Bayar", "Cicilan", "Lunas"] },
+        "tanggalDaftar": { "type": "string" },
+        "statusValidasi": { "type": "string", "enum": ["Belum Divalidasi", "Valid", "Tidak Valid"] },
+        "berkas": {
+          "type": "object",
+          "properties": {
+            "kk": { "type": "boolean" },
+            "akta": { "type": "boolean" },
+            "ktpOrtu": { "type": "boolean" },
+            "sklIjazah": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["nomorPendaftaran", "nik", "nama", "jenisKelamin", "jenjang", "status"]
+    },
+    "Biaya": {
+      "title": "Biaya",
+      "description": "Data master biaya pendaftaran pesantren.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jenisBiaya": { "type": "string" },
+        "nominal": { "type": "number" }
+      },
+      "required": ["id", "jenisBiaya", "nominal"]
+    },
+    "Tagihan": {
+      "title": "Tagihan",
+      "description": "Data rincian tagihan per santri.",
+      "type": "object",
+      "properties": {
+        "nomorPendaftaran": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "jenisBiaya": { "type": "string" },
+              "nominal": { "type": "number" },
+              "terbayar": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["nomorPendaftaran", "items"]
+    },
+    "Pembayaran": {
+      "title": "Pembayaran",
+      "description": "Data transaksi pembayaran pendaftaran.",
+      "type": "object",
+      "properties": {
+        "nomorTransaksi": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "nomorPendaftaran": { "type": "string" },
+        "namaSantri": { "type": "string" },
+        "itemsDetail": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "jenisBiaya": { "type": "string" },
+              "nominal": { "type": "number" }
+            }
+          }
+        },
+        "nominal": { "type": "number" },
+        "metodePembayaran": { "type": "string", "enum": ["Tunai", "Transfer", "QRIS"] },
+        "bendahara": { "type": "string" },
+        "catatan": { "type": "string" },
+        "status": { "type": "string", "enum": ["Sukses", "Dibatalkan"] },
+        "alasanPembatalan": { "type": "string" },
+        "dibatalkanOleh": { "type": "string" },
+        "tanggalPembatalan": { "type": "string" }
+      },
+      "required": ["nomorTransaksi", "tanggal", "nomorPendaftaran", "namaSantri", "nominal", "metodePembayaran", "status"]
+    },
+    "LogAktivitas": {
+      "title": "LogAktivitas",
+      "description": "Data log aktivitas penggunaan sistem.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "user": { "type": "string" },
+        "role": { "type": "string" },
+        "aktivitas": { "type": "string" },
+        "keterangan": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "user", "role", "aktivitas", "keterangan"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Data akun pengguna sistem pesantren.",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["Superadmin", "Admin Putri", "Admin Putra"] },
+        "password": { "type": "string" }
+      },
+      "required": ["username", "name", "role", "password"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Pengaturan keamanan dan login sistem.",
+      "type": "object",
+      "properties": {
+        "loginRequired": { "type": "boolean" }
+      },
+      "required": ["loginRequired"]
+    }
+  },
+  "firestore": {
+    "/santri/{nomorPendaftaran}": {
+      "schema": "Santri",
+      "description": "Koleksi data calon santri."
+    },
+    "/biaya/{id}": {
+      "schema": "Biaya",
+      "description": "Koleksi master biaya pendaftaran."
+    },
+    "/tagihan/{nomorPendaftaran}": {
+      "schema": "Tagihan",
+      "description": "Koleksi rincian tagihan per santri."
+    },
+    "/pembayaran/{nomorTransaksi}": {
+      "schema": "Pembayaran",
+      "description": "Koleksi transaksi pembayaran pendaftaran."
+    },
+    "/logs/{id}": {
+      "schema": "LogAktivitas",
+      "description": "Koleksi log aktivitas sistem."
+    },
+    "/users/{username}": {
+      "schema": "User",
+      "description": "Koleksi akun pengguna sistem."
+    },
+    "/settings/login": {
+      "schema": "Settings",
+      "description": "Pengaturan login sistem."
+    }
+  }
+}
