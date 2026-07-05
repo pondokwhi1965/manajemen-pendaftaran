@@ -137,15 +137,25 @@ export function LaporanManager({ santriList, pembayaranList, tagihanMap, biayaLi
       const pondokAddress = appSettings?.pondokAddress || 'Jl. Wahyu Hidayat No. 01, Pasuruan, Jawa Timur';
 
       // --- KOP SURAT (HERITAGE LETTERHEAD) ---
+      let startX = 14;
+      if (appSettings?.logoUrl) {
+        try {
+          doc.addImage(appSettings.logoUrl, 'PNG', 14, 8, 12, 12);
+          startX = 28;
+        } catch (e) {
+          console.error('Error adding logo to PDF:', e);
+        }
+      }
+
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(16);
       doc.setTextColor(15, 23, 42); // dark slate
-      doc.text(pondokName.toUpperCase(), 14, 15);
+      doc.text(pondokName.toUpperCase(), startX, 15);
       
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(100, 116, 139); // slate-500
-      doc.text(pondokAddress, 14, 20);
+      doc.text(pondokAddress, startX, 20);
 
       // Horizontal separator line
       doc.setDrawColor(203, 213, 225); // slate-300

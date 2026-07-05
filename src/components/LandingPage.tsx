@@ -10,9 +10,13 @@ import {
   X,
   AlertCircle,
   FileText,
+  FileCheck,
   MessageSquare,
   ArrowLeft,
-  BookOpen
+  BookOpen,
+  School,
+  Users,
+  MapPin
 } from 'lucide-react';
 import { Santri, AppSettings, getTerminology, getInstitutionType } from '../types';
 import { SantriFormFields } from './SantriFormFields';
@@ -37,6 +41,7 @@ export function LandingPage({ appSettings, onAdminLogin, onSubmitRegistration, o
   const [showCorrectionForm, setShowCorrectionForm] = useState(false);
   const [correctionMessage, setCorrectionMessage] = useState('');
   const [showClosedModal, setShowClosedModal] = useState(false);
+  const [selectedSantriDetail, setSelectedSantriDetail] = useState<Santri | null>(null);
 
   // Initial empty santri for registration form
   const [newSantri, setNewSantri] = useState<Partial<Santri>>({
@@ -321,7 +326,7 @@ export function LandingPage({ appSettings, onAdminLogin, onSubmitRegistration, o
                       setNewSantri(prev => ({ ...prev, [name]: value }));
                     }}
                     setFormData={setNewSantri as any}
-                    activeRole="Superadmin"
+                    activeRole="Master"
                     config={appSettings?.formFields}
                     jenjangOptions={appSettings?.jenjangOptions}
                     gelombangOptions={appSettings?.gelombangOptions}
@@ -413,116 +418,17 @@ export function LandingPage({ appSettings, onAdminLogin, onSubmitRegistration, o
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white p-5 rounded-3xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Jenjang</span>
-                        <div className="text-base font-black text-slate-900">{searchResult.jenjang}</div>
-                      </div>
-                      <div className="bg-white p-5 rounded-3xl border border-slate-100">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Validasi</span>
-                        <div className={`text-base font-black ${
-                          searchResult.statusValidasi === 'Valid' ? 'text-emerald-600' : 'text-amber-500'
-                        }`}>
-                          {searchResult.statusValidasi || 'Pending'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100">
-                      <div className="flex items-center gap-3 mb-4">
-                        <FileText size={20} className="text-emerald-600" />
-                        <h5 className="font-black text-slate-900">Verifikasi Data</h5>
-                      </div>
-                      
-                      {searchResult.userVerificationStatus === 'Verified' ? (
-                        <div className="bg-emerald-50 text-emerald-700 p-4 rounded-2xl flex items-center gap-3">
-                          <CheckCircle2 size={24} className="shrink-0" />
-                          <p className="text-sm font-bold">Data Anda telah diverifikasi dan disetujui.</p>
-                        </div>
-                      ) : searchResult.userVerificationStatus === 'Correction Requested' ? (
-                        <div className="bg-amber-50 text-amber-700 p-4 rounded-2xl flex items-start gap-3">
-                          <AlertCircle size={24} className="shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-bold mb-1">Pengajuan perbaikan data sedang diproses admin.</p>
-                            <p className="text-xs opacity-80">"{searchResult.correctionRequestMessage}"</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <p className="text-sm text-slate-600">Pastikan data yang Anda input sudah benar. Jika ada kesalahan, Anda dapat mengajukan perbaikan data.</p>
-                          
-                          {showCorrectionForm ? (
-                            <div className="space-y-3">
-                              <textarea
-                                value={correctionMessage}
-                                onChange={(e) => setCorrectionMessage(e.target.value)}
-                                placeholder="Jelaskan data apa yang salah dan perbaikannya..."
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-sm font-medium h-24 resize-none"
-                              />
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    if (onVerifyData && correctionMessage.trim()) {
-                                      setIsVerifying(true);
-                                      onVerifyData(searchResult.nomorPendaftaran, 'Correction Requested', correctionMessage);
-                                      setTimeout(() => {
-                                        setIsVerifying(false);
-                                        setShowCorrectionForm(false);
-                                        // Refresh search result locally for immediate feedback
-                                        setSearchResult({
-                                          ...searchResult,
-                                          userVerificationStatus: 'Correction Requested',
-                                          correctionRequestMessage: correctionMessage
-                                        });
-                                      }, 500);
-                                    }
-                                  }}
-                                  disabled={!correctionMessage.trim() || isVerifying}
-                                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-sm transition-all disabled:opacity-50"
-                                >
-                                  Kirim Pengajuan
-                                </button>
-                                <button
-                                  onClick={() => setShowCorrectionForm(false)}
-                                  className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-all"
-                                >
-                                  Batal
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col sm:flex-row gap-3">
-                              <button
-                                onClick={() => {
-                                  if (onVerifyData) {
-                                    setIsVerifying(true);
-                                    onVerifyData(searchResult.nomorPendaftaran, 'Verified');
-                                    setTimeout(() => {
-                                      setIsVerifying(false);
-                                      setSearchResult({
-                                        ...searchResult,
-                                        userVerificationStatus: 'Verified'
-                                      });
-                                    }, 500);
-                                  }
-                                }}
-                                disabled={isVerifying}
-                                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
-                              >
-                                <CheckCircle2 size={18} />
-                                Data Sudah Benar
-                              </button>
-                              <button
-                                onClick={() => setShowCorrectionForm(true)}
-                                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
-                              >
-                                <MessageSquare size={18} />
-                                Ajukan Perbaikan
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    <div className="pt-4">
+                      <button
+                        onClick={() => setSelectedSantriDetail(searchResult)}
+                        className="w-full py-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[2.5rem] font-black text-xl shadow-2xl shadow-emerald-200 transition-all cursor-pointer flex items-center justify-center gap-4 group"
+                      >
+                        <FileText size={28} className="transition-transform group-hover:scale-110" />
+                        CEK DATA PENDAFTARAN
+                      </button>
+                      <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-4">
+                        Klik tombol di atas untuk memverifikasi kelengkapan data Anda.
+                      </p>
                     </div>
                   </motion.div>
                 )}
@@ -546,6 +452,220 @@ export function LandingPage({ appSettings, onAdminLogin, onSubmitRegistration, o
       </AnimatePresence>
 
       {/* Success Modal */}
+      {/* Registration Details Modal */}
+      <AnimatePresence>
+        {selectedSantriDetail && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Detail Data Pendaftaran</h2>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{selectedSantriDetail.nomorPendaftaran}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedSantriDetail(null)}
+                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-8 max-h-[70vh] overflow-y-auto space-y-8">
+                {/* 1. Identitas */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <User size={18} className="text-emerald-600" />
+                    <h3 className="font-black text-sm text-slate-900 uppercase tracking-wider">Identitas Santri</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nama Lengkap</span>
+                      <p className="text-sm font-bold text-slate-800">{selectedSantriDetail.nama}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Jenis Kelamin</span>
+                      <p className="text-sm font-bold text-slate-800">{selectedSantriDetail.jenisKelamin}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tempat, Tanggal Lahir</span>
+                      <p className="text-sm font-bold text-slate-800">
+                        {selectedSantriDetail.tempatLahir}, {new Date(selectedSantriDetail.tanggalLahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">NIK</span>
+                      <p className="text-sm font-bold text-slate-800 font-mono">{selectedSantriDetail.nik || '-'}</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 2. Kelembagaan */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <School size={18} className="text-emerald-600" />
+                    <h3 className="font-black text-sm text-slate-900 uppercase tracking-wider">Kelembagaan & Pendidikan</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Asal Sekolah</span>
+                      <p className="text-sm font-bold text-slate-800">{selectedSantriDetail.asalSekolah}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Jenjang Yang Dipilih</span>
+                      <p className="text-sm font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded w-fit">{selectedSantriDetail.jenjang}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">NISN</span>
+                      <p className="text-sm font-bold text-slate-800 font-mono">{selectedSantriDetail.nisn || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Gelombang</span>
+                      <p className="text-sm font-bold text-slate-800">{selectedSantriDetail.gelombangPendaftaran}</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 3. Keluarga */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <Users size={18} className="text-emerald-600" />
+                    <h3 className="font-black text-sm text-slate-900 uppercase tracking-wider">Data Orang Tua</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nama Ayah</span>
+                      <p className="text-sm font-bold text-slate-800">{selectedSantriDetail.namaAyah}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nama Ibu</span>
+                      <p className="text-sm font-bold text-slate-800">{selectedSantriDetail.namaIbu}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nomor WhatsApp Ortu</span>
+                      <p className="text-sm font-bold text-emerald-600">{selectedSantriDetail.nomorHpOrangTua}</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 4. Alamat */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                    <MapPin size={18} className="text-emerald-600" />
+                    <h3 className="font-black text-sm text-slate-900 uppercase tracking-wider">Alamat Lengkap</h3>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl">
+                    <p className="text-sm font-bold text-slate-700 leading-relaxed">
+                      {selectedSantriDetail.alamat}, Desa {selectedSantriDetail.desa}, Kec. {selectedSantriDetail.kecamatan}, {selectedSantriDetail.kabupatenKota}, {selectedSantriDetail.provinsi}
+                    </p>
+                  </div>
+                </section>
+              </div>
+
+              <div className="p-8 bg-slate-50 border-t border-slate-100">
+                {selectedSantriDetail.userVerificationStatus === 'Verified' ? (
+                  <div className="bg-emerald-600 text-white p-5 rounded-3xl flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 animate-in zoom-in duration-300">
+                    <CheckCircle2 size={24} className="stroke-[2.5]" />
+                    <span className="font-black text-lg">DATA TELAH DIVERIFIKASI</span>
+                  </div>
+                ) : selectedSantriDetail.userVerificationStatus === 'Correction Requested' ? (
+                  <div className="bg-amber-500 text-white p-5 rounded-3xl flex items-center justify-center gap-3 shadow-xl shadow-amber-100 animate-in zoom-in duration-300">
+                    <AlertCircle size={24} className="stroke-[2.5]" />
+                    <span className="font-black text-lg text-center">PENGAJUAN PERBAIKAN SEDANG DIPROSES</span>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {showCorrectionForm ? (
+                      <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
+                        <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest ml-1">Keterangan Perbaikan</label>
+                        <textarea
+                          value={correctionMessage}
+                          onChange={(e) => setCorrectionMessage(e.target.value)}
+                          placeholder="Contoh: Nama ayah salah ketik, seharusnya Ahmad Kurniawan..."
+                          className="w-full p-5 bg-white border-2 border-amber-100 rounded-3xl focus:outline-hidden focus:ring-2 focus:ring-amber-500 text-sm font-bold h-32 resize-none shadow-sm"
+                        />
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              if (onVerifyData && correctionMessage.trim()) {
+                                setIsVerifying(true);
+                                onVerifyData(selectedSantriDetail.nomorPendaftaran, 'Correction Requested', correctionMessage);
+                                setTimeout(() => {
+                                  setIsVerifying(false);
+                                  setShowCorrectionForm(false);
+                                  setSelectedSantriDetail({
+                                    ...selectedSantriDetail,
+                                    userVerificationStatus: 'Correction Requested',
+                                    correctionRequestMessage: correctionMessage
+                                  });
+                                  setSearchResult({
+                                    ...selectedSantriDetail,
+                                    userVerificationStatus: 'Correction Requested',
+                                    correctionRequestMessage: correctionMessage
+                                  });
+                                }, 500);
+                              }
+                            }}
+                            disabled={!correctionMessage.trim() || isVerifying}
+                            className="flex-1 py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-[1.8rem] font-black text-base transition-all disabled:opacity-50 shadow-lg shadow-amber-50 cursor-pointer active:scale-95"
+                          >
+                            Kirim Pengajuan
+                          </button>
+                          <button
+                            onClick={() => setShowCorrectionForm(false)}
+                            className="px-8 py-4 bg-white border border-slate-200 text-slate-500 rounded-[1.8rem] font-black text-base transition-all hover:bg-slate-50 cursor-pointer active:scale-95"
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button
+                          onClick={() => {
+                            if (onVerifyData) {
+                              setIsVerifying(true);
+                              onVerifyData(selectedSantriDetail.nomorPendaftaran, 'Verified');
+                              setTimeout(() => {
+                                setIsVerifying(false);
+                                setSelectedSantriDetail({
+                                  ...selectedSantriDetail,
+                                  userVerificationStatus: 'Verified'
+                                });
+                                setSearchResult({
+                                  ...selectedSantriDetail,
+                                  userVerificationStatus: 'Verified'
+                                });
+                              }, 500);
+                            }
+                          }}
+                          disabled={isVerifying}
+                          className="flex-1 py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[2rem] font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-100 cursor-pointer active:scale-95"
+                        >
+                          <CheckCircle2 size={22} className="stroke-[2.5]" />
+                          DATA SUDAH BENAR
+                        </button>
+                        <button
+                          onClick={() => setShowCorrectionForm(true)}
+                          className="flex-1 py-5 bg-white border-2 border-slate-200 hover:border-amber-500 hover:text-amber-600 text-slate-600 rounded-[2rem] font-black text-lg transition-all flex items-center justify-center gap-3 cursor-pointer active:scale-95"
+                        >
+                          <MessageSquare size={22} className="stroke-[2.5]" />
+                          AJUKAN PERBAIKAN
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {successReg && (
           <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">

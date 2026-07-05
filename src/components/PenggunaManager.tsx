@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, UserCheck, Shield, Plus, Lock, ShieldAlert, Trash2, X, AlertCircle, Eye, EyeOff, Edit2 } from 'lucide-react';
+import { Users, UserCheck, Shield, Plus, Lock, ShieldAlert, Trash2, X, AlertCircle, Eye, EyeOff, Edit2, Check } from 'lucide-react';
 import { Role, User, AppSettings, getTerminology } from '../types';
 
 interface PenggunaManagerProps {
@@ -25,7 +25,7 @@ export function PenggunaManager({
   onUpdateUserStatus,
   appSettings,
 }: PenggunaManagerProps) {
-  const isAuthorized = activeRole === 'Superadmin';
+  const isAuthorized = activeRole === 'Master';
 
   // Form State (Add / Edit)
   const [showForm, setShowForm] = useState(false);
@@ -101,15 +101,15 @@ export function PenggunaManager({
     setEditingUser(null);
     setNewUsername('');
     setNewName('');
-    setNewRole('Admin');
+    setNewRole('Admin Putra');
     setNewPassword('');
     setError('');
     setShowForm(false);
   };
 
   const handleDeleteUser = (username: string) => {
-    if (username === 'superadmin') {
-      setError('Gagal: Akun Super Admin tidak dapat dihapus demi keamanan darurat sistem.');
+    if (username.toLowerCase() === 'manajer') {
+      setError('Gagal: Akun Master (Manajer) tidak dapat dihapus demi keamanan darurat sistem.');
       return;
     }
     setDeleteConfirmUsername(username);
@@ -121,6 +121,14 @@ export function PenggunaManager({
       [username]: !prev[username]
     }));
   };
+
+  const sortedUsersList = [...usersList].sort((a, b) => {
+    const aUser = a?.username?.toLowerCase() || '';
+    const bUser = b?.username?.toLowerCase() || '';
+    if (aUser === 'manajer') return -1;
+    if (bUser === 'manajer') return 1;
+    return aUser.localeCompare(bUser);
+  });
 
   return (
     <div className="space-y-6">
@@ -143,7 +151,7 @@ export function PenggunaManager({
         ) : (
           !canModify && (
             <div className="bg-amber-50 text-amber-700 text-xs px-3 py-2 rounded-xl font-semibold border border-amber-200">
-              Hanya bisa diakses (diedit) oleh role super admin
+              Hanya bisa diakses (diedit) oleh peran Master
             </div>
           )
         )}
@@ -174,7 +182,7 @@ export function PenggunaManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {usersList.map((user) => {
+                  {sortedUsersList.map((user) => {
                     const isVisible = visiblePasswords[user.username] || false;
 
                     return (
@@ -214,7 +222,7 @@ export function PenggunaManager({
                         {/* Role */}
                         <td className="py-3.5 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                            user.role === 'Superadmin' ? 'bg-emerald-100 text-emerald-800' :
+                            user.role === 'Master' ? 'bg-emerald-100 text-emerald-800' :
                             user.role === 'Admin Umum' ? 'bg-amber-100 text-amber-800' :
                             user.role === 'Admin Putri' ? 'bg-pink-100 text-pink-800' :
                             'bg-indigo-100 text-indigo-800'
@@ -225,11 +233,11 @@ export function PenggunaManager({
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <button
-                              onClick={() => canModify && user.username !== 'superadmin' && onUpdateUserStatus?.(user.username, !(user.isActive ?? true))}
+                              onClick={() => canModify && user.username.toLowerCase() !== 'manajer' && onUpdateUserStatus?.(user.username, !(user.isActive ?? true))}
                               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
                                 (user.isActive ?? true) ? 'bg-emerald-600' : 'bg-slate-300'
-                              } ${(!canModify || user.username === 'superadmin') ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              disabled={!canModify || user.username === 'superadmin'}
+                              } ${(!canModify || user.username.toLowerCase() === 'manajer') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={!canModify || user.username.toLowerCase() === 'manajer'}
                               title={(user.isActive ?? true) ? "Nonaktifkan Akun" : "Aktifkan Akun"}
                             >
                               <span
@@ -257,7 +265,7 @@ export function PenggunaManager({
                               >
                                 <Edit2 size={14} />
                               </button>
-                              {user.username !== 'superadmin' ? (
+                              {user.username.toLowerCase() !== 'manajer' ? (
                                 <button
                                   onClick={() => handleDeleteUser(user.username)}
                                   className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
@@ -285,21 +293,118 @@ export function PenggunaManager({
 
         {/* Right column: Role explanation */}
         <div className="space-y-4">
-          <div className="bg-slate-50 border border-slate-150 rounded-3xl p-5 space-y-4 text-xs text-slate-600 leading-relaxed">
-            <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[10px] flex items-center gap-1">
-              <Shield size={14} className="text-slate-400" />
-              Matriks Kewenangan Staf
-            </h4>
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <div className="p-2 bg-emerald-50 rounded-xl text-emerald-700">
+                <Shield size={16} />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Matriks Kewenangan Staf</h4>
+                <p className="text-[10px] text-slate-500 font-medium">Pembagian hak akses menu & tindakan sistem</p>
+              </div>
+            </div>
 
-            <div className="space-y-3 divide-y divide-slate-150">
-              <div className="space-y-1">
-                <p className="font-bold text-indigo-800">1. Admin (Putra/Putri/Umum)</p>
-                <p className="text-[11px]">Mengelola pendaftaran {getTerminology(appSettings)} baru, verifikasi data, kelengkapan berkas, pembayaran loket, dan laporan keuangan sesuai dengan lingkup gendernya (kecuali Admin Umum yang bisa keduanya).</p>
-              </div>
-              <div className="space-y-1 pt-2">
-                <p className="font-bold text-emerald-800">2. Super Admin</p>
-                <p className="text-[11px]">Otoritas tertinggi mutlak. Memiliki seluruh kewenangan Admin ditambah kemampuan mengatur master biaya, fitur keamanan login staf, manajemen staff, dan database.</p>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-[11px]">
+                <thead>
+                  <tr className="border-b border-slate-150 font-bold text-slate-400 uppercase bg-slate-50/50 text-[10px]">
+                    <th className="py-2.5 px-2">Fitur Sistem</th>
+                    <th className="py-2.5 px-1.5 text-center bg-emerald-50 text-emerald-800 rounded-t-lg">Master</th>
+                    <th className="py-2.5 px-1.5 text-center text-slate-600">Admin</th>
+                    <th className="py-2.5 px-1.5 text-center text-slate-600">Bendahara</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-2 font-semibold text-slate-700">Pendaftaran Santri</td>
+                    <td className="py-2.5 px-1.5 text-center font-bold text-emerald-600 bg-emerald-50/30">
+                      <div className="flex items-center justify-center gap-0.5 text-emerald-700 text-[10px] bg-emerald-100/75 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                        <Check size={10} /> Penuh
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center">
+                      <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md font-bold uppercase">Gender*</span>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-2 font-semibold text-slate-700">Verifikasi Dokumen</td>
+                    <td className="py-2.5 px-1.5 text-center font-bold text-emerald-600 bg-emerald-50/30">
+                      <div className="flex items-center justify-center gap-0.5 text-emerald-700 text-[10px] bg-emerald-100/75 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                        <Check size={10} /> Penuh
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center">
+                      <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md font-bold uppercase">Gender*</span>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-2 font-semibold text-slate-700">Loket Pembayaran</td>
+                    <td className="py-2.5 px-1.5 text-center font-bold text-emerald-600 bg-emerald-50/30">
+                      <div className="flex items-center justify-center gap-0.5 text-emerald-700 text-[10px] bg-emerald-100/75 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                        <Check size={10} /> Penuh
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                    <td className="py-2.5 px-1.5 text-center">
+                      <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md font-bold uppercase">Gender*</span>
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-2 font-semibold text-slate-700">Laporan Keuangan</td>
+                    <td className="py-2.5 px-1.5 text-center font-bold text-emerald-600 bg-emerald-50/30">
+                      <div className="flex items-center justify-center gap-0.5 text-emerald-700 text-[10px] bg-emerald-100/75 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                        <Check size={10} /> Penuh
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                    <td className="py-2.5 px-1.5 text-center">
+                      <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md font-bold uppercase">Gender*</span>
+                    </td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-2 font-semibold text-slate-700">Master Tarif Biaya</td>
+                    <td className="py-2.5 px-1.5 text-center font-bold text-emerald-600 bg-emerald-50/30 rounded-b-lg">
+                      <div className="flex items-center justify-center gap-0.5 text-emerald-700 text-[10px] bg-emerald-100/75 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                        <Check size={10} /> Penuh
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="py-2.5 px-2 font-semibold text-slate-700">Akun Staf & Backup</td>
+                    <td className="py-2.5 px-1.5 text-center font-bold text-emerald-600 bg-emerald-50/30 rounded-b-lg">
+                      <div className="flex items-center justify-center gap-0.5 text-emerald-700 text-[10px] bg-emerald-100/75 px-1.5 py-0.5 rounded-md font-bold uppercase">
+                        <Check size={10} /> Penuh
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                    <td className="py-2.5 px-1.5 text-center text-slate-350">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-100/70 rounded-2xl p-3.5 text-[10px] text-amber-800 space-y-1.5">
+              <p className="font-bold flex items-center gap-1">
+                <AlertCircle size={12} className="text-amber-700" /> Keterangan Matriks:
+              </p>
+              <ul className="list-disc pl-3.5 space-y-1">
+                <li>
+                  <strong className="text-amber-900">Penuh:</strong> Akses global mutlak tanpa memandang jenis kelamin/gender data.
+                </li>
+                <li>
+                  <strong className="text-amber-900">Gender*:</strong> Hanya mengelola sesuai jenis kelamin staf (Staf Putra mengelola Laki-laki, Staf Putri mengelola Perempuan, Staf Umum mengelola keduanya).
+                </li>
+                <li>
+                  <strong className="text-amber-900">Bendahara:</strong> Memiliki kewenangan eksklusif untuk entri kwitansi di loket pembayaran serta melihat dan mengunduh laporan keuangan.
+                </li>
+                <li>
+                  <strong className="text-amber-900">Admin:</strong> Berwenang penuh melengkapi formulir pendaftaran dan mengunggah verifikasi berkas/dokumen.
+                </li>
+              </ul>
             </div>
           </div>
         </div>
@@ -372,10 +477,13 @@ export function PenggunaManager({
                     onChange={(e) => setNewRole(e.target.value as Role)}
                     className="px-4 py-3 text-xs border border-slate-200 rounded-2xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 w-full bg-white font-bold text-slate-700 transition-all"
                   >
-                    <option value="Superadmin">Superadmin (Akses Penuh)</option>
-                    <option value="Admin Umum">Admin Umum (Semua Gender)</option>
-                    <option value="Admin Putri">Admin Putri (Khusus Putri)</option>
-                    <option value="Admin Putra">Admin Putra (Khusus Putra)</option>
+                    <option value="Master">Master (Akses Penuh)</option>
+                    <option value="Admin Umum">Admin Umum</option>
+                    <option value="Admin Putra">Admin Putra (Sesuai Gender)</option>
+                    <option value="Admin Putri">Admin Putri (Sesuai Gender)</option>
+                    <option value="Bendahara Umum">Bendahara Umum</option>
+                    <option value="Bendahara Putra">Bendahara Putra (Sesuai Gender)</option>
+                    <option value="Bendahara Putri">Bendahara Putri (Sesuai Gender)</option>
                   </select>
                 </div>
               </div>

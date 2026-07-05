@@ -8,50 +8,79 @@ const STORAGE_KEY = 'wahyu_hidayatul_islam_payment_system_v1';
 const FIREBASE_DOC_ID = 'main_state';
 const FIREBASE_COLLECTION = 'appData';
 
-const defaultUsersList: User[] = [
-  { username: 'superadmin', name: 'Super Admin', role: 'Superadmin', password: 'superadmin123', isActive: true },
+export const defaultUsersList: User[] = [
+  { username: 'manajer', name: 'Manajer', role: 'Master', password: 'manajer123', isActive: true },
   { username: 'adminumum', name: 'Admin Umum', role: 'Admin Umum', password: 'adminumum123', isActive: true },
   { username: 'adminputra', name: 'Admin Putra', role: 'Admin Putra', password: 'adminputra123', isActive: true },
   { username: 'adminputri', name: 'Admin Putri', role: 'Admin Putri', password: 'adminputri123', isActive: true },
+  { username: 'bendaharaumum', name: 'Bendahara Umum', role: 'Bendahara Umum', password: 'bendaharaumum123', isActive: true },
+  { username: 'bendaharaputra', name: 'Bendahara Putra', role: 'Bendahara Putra', password: 'bendaharaputra123', isActive: true },
+  { username: 'bendaharaputri', name: 'Bendahara Putri', role: 'Bendahara Putri', password: 'bendaharaputri123', isActive: true },
 ];
 
 const defaultUsers: Record<Role, User> = {
-  'Superadmin': defaultUsersList[0],
+  'Master': defaultUsersList[0],
   'Admin Umum': defaultUsersList[1],
   'Admin Putra': defaultUsersList[2],
   'Admin Putri': defaultUsersList[3],
+  'Bendahara Umum': defaultUsersList[4],
+  'Bendahara Putra': defaultUsersList[5],
+  'Bendahara Putri': defaultUsersList[6],
 };
+
+const validRoles = new Set<Role>([
+  'Master', 
+  'Admin Umum', 
+  'Admin Putra', 
+  'Admin Putri',
+  'Bendahara Umum',
+  'Bendahara Putra',
+  'Bendahara Putri'
+]);
+const invalidUsernames = new Set(['superadmin']);
 
 const ensureDefaultUsers = (fullState: SystemState): { state: SystemState; changed: boolean } => {
   let changed = false;
-  const list = fullState.usersList ? [...fullState.usersList] : [];
+  let list = fullState.usersList ? [...fullState.usersList] : [];
+
+  const initialLength = list.length;
+  // Keep only active users that have valid roles and valid usernames
+  list = list.filter(u => u && u.username && validRoles.has(u.role) && !invalidUsernames.has(u.username.toLowerCase()));
   
-  if (list.length === 0) {
-    return {
-      state: {
-        ...fullState,
-        usersList: [...defaultUsersList],
-      },
-      changed: true
-    };
-  }
-  
-  // Ensure that at least one Superadmin user exists to prevent lockouts
-  const hasSuperadmin = list.some(u => u.role === 'Superadmin');
-  if (!hasSuperadmin) {
-    // Check if the default superadmin username is taken, otherwise add it
-    const defaultSuper = defaultUsersList[0];
-    const usernameTaken = list.some(u => u.username.toLowerCase() === defaultSuper.username.toLowerCase());
-    if (!usernameTaken) {
-      list.push({ ...defaultSuper, isActive: true });
-    } else {
-      // Force the existing username matching default super to be Superadmin or append a new one
-      const existingIdx = list.findIndex(u => u.username.toLowerCase() === defaultSuper.username.toLowerCase());
-      list[existingIdx].role = 'Superadmin';
-      list[existingIdx].isActive = true;
+  // Normalize any 'Manajer' (with uppercase M) to lowercase 'manajer'
+  list = list.map(u => {
+    if (u && u.username === 'Manajer') {
+      changed = true;
+      return { ...u, username: 'manajer' };
     }
+    return u;
+  });
+
+  // Deduplicate by username case-insensitively
+  const seenUsernames = new Set<string>();
+  const beforeDedupeLength = list.length;
+  list = list.filter(u => {
+    if (!u || !u.username) return false;
+    const key = u.username.toLowerCase();
+    if (seenUsernames.has(key)) {
+      return false;
+    }
+    seenUsernames.add(key);
+    return true;
+  });
+
+  if (list.length !== beforeDedupeLength || list.length !== initialLength) {
     changed = true;
   }
+  
+  // Ensure that each of the 4 default users exists in the list
+  defaultUsersList.forEach(defUser => {
+    const exists = list.some(u => u && u.username && u.username.toLowerCase() === defUser.username.toLowerCase());
+    if (!exists) {
+      list.push({ ...defUser });
+      changed = true;
+    }
+  });
   
   return {
     state: {
@@ -156,7 +185,14 @@ export function useAppState() {
     const initializeData = async () => {
       try {
         const docRef = doc(db, FIREBASE_COLLECTION, FIREBASE_DOC_ID);
-        const docSnap = await getDoc(docRef);
+        
+        // 4-second timeout to prevent loading hang if Firestore is unreachable/slow
+        const docSnap = await Promise.race([
+          getDoc(docRef),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Firebase connection timeout (4s)')), 4000)
+          )
+        ]);
 
         let parsed: any = null;
         if (docSnap.exists()) {
@@ -199,6 +235,13 @@ export function useAppState() {
           const check = ensureDefaultUsers(fullState);
           if (check.changed) {
             fullState = check.state;
+          }
+          
+          if (!fullState.currentUser || !fullState.currentUser.username || !validRoles.has(fullState.currentUser.role) || invalidUsernames.has(fullState.currentUser.username.toLowerCase())) {
+            fullState.currentUser = defaultUsers['Master'];
+          }
+          
+          if (check.changed || fullState.currentUser !== (parsed as SystemState).currentUser) {
             await setDoc(docRef, fullState);
           }
           
@@ -255,7 +298,7 @@ export function useAppState() {
                 tagihanMap: initialTagihanMap,
                 pembayaranList: initialPembayaranList,
                 logs: initialLogs,
-                currentUser: defaultUsers['Superadmin'], // Default starting user
+                currentUser: defaultUsers['Master'], // Default starting user
                 usersList: defaultUsersList,
                 loginSettings: { loginRequired: true },
                 appSettings: defaultAppSettings,
@@ -268,7 +311,7 @@ export function useAppState() {
               tagihanMap: initialTagihanMap,
               pembayaranList: initialPembayaranList,
               logs: initialLogs,
-              currentUser: defaultUsers['Superadmin'], // Default starting user
+              currentUser: defaultUsers['Master'], // Default starting user
               usersList: defaultUsersList,
               loginSettings: { loginRequired: true },
               appSettings: defaultAppSettings,
@@ -331,6 +374,11 @@ export function useAppState() {
               }
               const check = ensureDefaultUsers(fullState);
               fullState = check.state;
+              
+              if (!fullState.currentUser || !fullState.currentUser.username || !validRoles.has(fullState.currentUser.role) || invalidUsernames.has(fullState.currentUser.username.toLowerCase())) {
+                fullState.currentUser = defaultUsers['Master'];
+              }
+              
               setState(fullState);
               return;
             }
@@ -346,7 +394,7 @@ export function useAppState() {
           tagihanMap: initialTagihanMap,
           pembayaranList: initialPembayaranList,
           logs: initialLogs,
-          currentUser: defaultUsers['Superadmin'],
+          currentUser: defaultUsers['Master'],
           usersList: defaultUsersList,
           loginSettings: { loginRequired: true },
           appSettings: defaultAppSettings,
@@ -937,18 +985,17 @@ export function useAppState() {
       return { success: false, error: 'Jumlah pembayaran total harus lebih besar dari Rp 0.' };
     }
 
-    // Generate Receipt Number: KWT-2026-XXXX
-    const currentYear = 2026;
+    // Generate Receipt Number: PSB-XXXX
     let nextReceiptNum = 1;
-    const sameYearReceipts = state.pembayaranList.filter(p => p.nomorTransaksi.startsWith(`KWT-${currentYear}-`));
-    if (sameYearReceipts.length > 0) {
-      const numbers = sameYearReceipts.map(p => {
+    const allValidReceipts = state.pembayaranList.filter(p => p.nomorTransaksi.startsWith('PSB-'));
+    if (allValidReceipts.length > 0) {
+      const numbers = allValidReceipts.map(p => {
         const parts = p.nomorTransaksi.split('-');
         return parseInt(parts[parts.length - 1], 10);
       });
-      nextReceiptNum = Math.max(...numbers) + 1;
+      nextReceiptNum = Math.max(...numbers.filter(n => !isNaN(n)), 0) + 1;
     }
-    const nomorTransaksi = `KWT-${currentYear}-${String(nextReceiptNum).padStart(4, '0')}`;
+    const nomorTransaksi = `PSB-${String(nextReceiptNum).padStart(4, '0')}`;
 
     // Recalculate Santri's total billing status
     const totalBilled = updatedTagihans.reduce((acc, t) => acc + t.nominal, 0);
@@ -1101,7 +1148,7 @@ export function useAppState() {
           id: `log-${Date.now()}`,
           tanggal: new Date().toISOString().replace('T', ' ').substring(0, 16),
           user: 'Sistem',
-          role: 'Superadmin',
+          role: 'Master',
           aktivitas: 'Reset Sistem',
           keterangan: 'Mengembalikan seluruh data ke pengaturan awal pabrik.',
         },
@@ -1325,7 +1372,7 @@ export function useAppState() {
 
   return {
     state,
-    currentUser: state?.currentUser || defaultUsers['Superadmin'],
+    currentUser: state?.currentUser || defaultUsers['Master'],
     isFirebaseConnected,
     switchRole,
     addSantri,

@@ -31,10 +31,10 @@ export function SettingsManager({ activeRole, settings, onUpdateSettings }: Sett
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  if (activeRole !== 'Superadmin') {
+  if (activeRole !== 'Master') {
     return (
       <div className="bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-sm">
-        <p className="text-slate-500 font-medium">Hanya Superadmin yang dapat mengakses pengaturan aplikasi.</p>
+        <p className="text-slate-500 font-medium">Hanya Master yang dapat mengakses pengaturan aplikasi.</p>
       </div>
     );
   }

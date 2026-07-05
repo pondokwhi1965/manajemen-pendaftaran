@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserPlus, FileText, Edit3, Eye, Calendar, MapPin, Phone, GraduationCap, X, Check, CircleAlert, CheckCircle, Trash2, Upload, Download, Printer } from 'lucide-react';
+import { Search, UserPlus, FileText, Edit3, Eye, Calendar, MapPin, Phone, GraduationCap, X, Check, CircleAlert, CheckCircle, Trash2, Upload, Download, Printer, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { motion } from 'motion/react';
 import { Santri, TagihanItem, Role, AppSettings, getTerminology, getInstitutionType } from '../types';
 import { SantriFormFields } from './SantriFormFields';
+import { printElementInNewTab } from '../utils';
 
 interface SantriManagerProps {
   santriList: Santri[];
@@ -144,6 +145,125 @@ export function SantriManager({
       }
     }
   }, [preSelectedSantriId, santriList]);
+
+  const handleExportExcelAll = () => {
+    try {
+      const exportData = filteredSantri.map(s => {
+        const billing = getBillingSummary(s.nomorPendaftaran);
+        return {
+          'No. Pendaftaran': s.nomorPendaftaran,
+          'Tanggal Daftar': s.tanggalDaftar,
+          'Nama Lengkap': s.nama,
+          'Jenis Kelamin': s.jenisKelamin,
+          'Jenjang': s.jenjang,
+          'Gelombang': s.gelombangPendaftaran,
+          'Status Bayar': s.status,
+          'Total Tagihan': billing.total,
+          'Terbayar': billing.paid,
+          'Sisa Pembayaran': billing.sisa,
+          'Tempat Lahir': s.tempatLahir,
+          'Tanggal Lahir': s.tanggalLahir,
+          'Alamat': `${s.alamat || ''} RT ${s.rt || ''}/RW ${s.rw || ''} Desa ${s.desa || ''} Kec. ${s.kecamatan || ''} Kab/Kota ${s.kabupatenKota || ''}`.trim(),
+          'Nama Ayah': s.namaAyah,
+          'Nama Ibu': s.namaIbu,
+          'No. HP Orang Tua': s.nomorHpOrangTua
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data Santri");
+      XLSX.writeFile(wb, `DATA_SANTRI_BARU_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (e: any) {
+      alert(`Gagal mengekspor data ke Excel: ${e.message}`);
+    }
+  };
+
+  const handleExportPDFAll = () => {
+    const title = `DATA CALON ${getTerminology(appSettings, { capitalize: true }).toUpperCase()} BARU`;
+    
+    let rowsHtml = '';
+    filteredSantri.forEach((s, idx) => {
+      const billing = getBillingSummary(s.nomorPendaftaran);
+      rowsHtml += `
+        <tr class="border-b border-slate-200 hover:bg-slate-50 transition-all">
+          <td class="py-2 px-3 text-[10px] text-center font-medium text-slate-500">${idx + 1}</td>
+          <td class="py-2 px-3 text-[10px] font-semibold text-slate-900">${s.nomorPendaftaran}</td>
+          <td class="py-2 px-3 text-[10px] font-bold text-emerald-950">${s.nama}</td>
+          <td class="py-2 px-3 text-[10px] text-slate-600">${s.jenisKelamin}</td>
+          <td class="py-2 px-3 text-[10px] font-medium text-slate-700">${s.jenjang}</td>
+          <td class="py-2 px-3 text-[10px] text-slate-600">${s.gelombangPendaftaran}</td>
+          <td class="py-2 px-3 text-[10px] text-center">
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
+              s.status === 'Lunas' ? 'bg-emerald-100 text-emerald-800' :
+              s.status === 'Cicilan' ? 'bg-amber-100 text-amber-800' :
+              'bg-red-100 text-red-800'
+            }">${s.status}</span>
+          </td>
+          <td class="py-2 px-3 text-[10px] text-right font-semibold text-slate-800">Rp ${billing.total.toLocaleString('id-ID')}</td>
+          <td class="py-2 px-3 text-[10px] text-right font-semibold text-emerald-700">Rp ${billing.paid.toLocaleString('id-ID')}</td>
+          <td class="py-2 px-3 text-[10px] text-right font-semibold text-amber-700">Rp ${billing.sisa.toLocaleString('id-ID')}</td>
+        </tr>
+      `;
+    });
+
+    const reportHtml = `
+      <div class="printable bg-white p-8 border-2 border-emerald-900 rounded-2xl shadow-xs space-y-6">
+        <div class="flex items-center justify-between border-b-2 border-emerald-900 pb-4">
+          <div>
+            <h1 class="text-lg font-bold text-emerald-950 tracking-tight">${appSettings?.pondokName || 'PESANTREN WAHYU HIDAYAT'}</h1>
+            <p class="text-xs text-slate-500">${appSettings?.pondokAddress || 'Jombang, Jawa Timur'}</p>
+          </div>
+          <div class="text-right">
+            <span class="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-3 py-1 rounded-full border border-emerald-200">
+              LAPORAN REGISTRASI
+            </span>
+            <p class="text-[9px] text-slate-400 mt-1">Dicetak pada: ${new Date().toLocaleDateString('id-ID')}</p>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h2 class="text-sm font-bold text-slate-800 text-center uppercase tracking-wide">${title}</h2>
+          <p class="text-[10px] text-slate-500 text-center">Menampilkan total ${filteredSantri.length} santri berdasarkan kriteria pencarian.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-emerald-900 text-white border-b border-emerald-950">
+                <th class="py-2 px-3 text-[10px] font-bold text-center">No</th>
+                <th class="py-2 px-3 text-[10px] font-bold">No. Reg</th>
+                <th class="py-2 px-3 text-[10px] font-bold">Nama Lengkap</th>
+                <th class="py-2 px-3 text-[10px] font-bold">Gender</th>
+                <th class="py-2 px-3 text-[10px] font-bold">Jenjang</th>
+                <th class="py-2 px-3 text-[10px] font-bold">Gelombang</th>
+                <th class="py-2 px-3 text-[10px] font-bold text-center">Status</th>
+                <th class="py-2 px-3 text-[10px] font-bold text-right">Total</th>
+                <th class="py-2 px-3 text-[10px] font-bold text-right">Terbayar</th>
+                <th class="py-2 px-3 text-[10px] font-bold text-right">Sisa</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 pt-12 text-center text-[10px] text-slate-600">
+          <div>
+            <p>Mengetahui,</p>
+            <p class="font-bold text-slate-800 mt-12">Ketua Panitia PSB</p>
+          </div>
+          <div>
+            <p>Jombang, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p class="font-bold text-slate-800 mt-12">Staf Administrasi</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    printElementInNewTab(reportHtml, `Laporan_Data_Santri_${new Date().toISOString().split('T')[0]}`);
+  };
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -626,28 +746,21 @@ export function SantriManager({
 
         {!isReadOnly && (
           <div className="flex items-center gap-2">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              accept=".xlsx,.xls" 
-              className="hidden" 
-            />
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleExportExcelAll}
               className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-lg inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer shrink-0"
-              title="Import Data Excel"
+              title="Unduh Data Excel"
             >
-              <Upload size={16} />
-              Import Excel
+              <FileSpreadsheet size={16} className="text-emerald-600" />
+              Unduh Excel
             </button>
             <button
-              onClick={downloadExcelTemplate}
+              onClick={handleExportPDFAll}
               className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-lg inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer shrink-0"
-              title="Unduh Format Template Excel"
+              title="Unduh Laporan PDF / Cetak"
             >
-              <Download size={16} />
-              Template Excel
+              <FileText size={16} className="text-red-500" />
+              Unduh PDF
             </button>
             <button
               id="btn-register-student"
@@ -732,18 +845,7 @@ export function SantriManager({
               </span>
               <div className="h-4 w-px bg-emerald-200 mx-1"></div>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => handleBulkStatusUpdate('Lunas')}
-                  className="px-2 py-1 bg-white border border-emerald-200 text-emerald-700 rounded text-[10px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-                >
-                  Set Lunas
-                </button>
-                <button 
-                  onClick={() => handleBulkStatusUpdate('Cicilan')}
-                  className="px-2 py-1 bg-white border border-emerald-200 text-emerald-700 rounded text-[10px] font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-                >
-                  Set Cicilan
-                </button>
+                {/* Status update buttons removed as per user request */}
               </div>
             </div>
             <div className="flex items-center gap-2">

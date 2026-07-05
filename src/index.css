@@ -4,13 +4,19 @@
   body * {
     visibility: hidden;
   }
-  #print-area, #print-area * {
+  #print-area, #print-area *, .printable, .printable * {
     visibility: visible;
   }
-  #print-area {
+  .printable {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .no-print {
+    display: none !important;
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, CreditCard, Receipt, FileCheck2, CalendarCheck, Ban, ArrowRight, Eye, RefreshCw, AlertTriangle, BookOpen, X } from 'lucide-react';
+import { Search, CreditCard, Receipt, FileCheck2, CalendarCheck, Ban, ArrowRight, Eye, RefreshCw, AlertTriangle, BookOpen, X, Printer } from 'lucide-react';
 import { Santri, TagihanItem, Pembayaran, Role, AppSettings, getTerminology } from '../types';
 
 interface PembayaranManagerProps {
@@ -32,13 +32,15 @@ export function PembayaranManager({
   onClearPreSelected,
   appSettings
 }: PembayaranManagerProps) {
-  const canModify = activeRole === 'Superadmin' || activeRole === 'Admin Putri' || activeRole === 'Admin Putra';
+  const canModify = activeRole === 'Master' || activeRole === 'Admin Putri' || activeRole === 'Admin Putra';
   const santriTerm = getTerminology(appSettings, { capitalize: true });
   const santriTermLower = getTerminology(appSettings, { capitalize: false });
-  const canCancel = activeRole === 'Superadmin' || activeRole === 'Admin Putri' || activeRole === 'Admin Putra'; // All staff can cancel payments
+  const canCancel = activeRole === 'Master' || activeRole === 'Admin Putri' || activeRole === 'Admin Putra'; // All staff can cancel payments
 
   // States
   const [selectedSantriId, setSelectedSantriId] = useState('');
+  const [santriSearchTerm, setSantriSearchTerm] = useState('');
+  const [isSantriDropdownOpen, setIsSantriDropdownOpen] = useState(false);
   const [activeSantri, setActiveSantri] = useState<Santri | null>(null);
   const [outstandingFees, setOutstandingFees] = useState<{ id: string; jenisBiaya: string; nominal: number; terbayar: number; payAmount: number; isSelected: boolean }[]>([]);
 
@@ -208,6 +210,14 @@ export function PembayaranManager({
     return 0;
   });
 
+  // Step 1: Select Student
+  const filteredSantris = santriList
+    .filter(s => s.status !== 'Lunas')
+    .filter(s => 
+      s.nama.toLowerCase().includes(santriSearchTerm.toLowerCase()) || 
+      s.nomorPendaftaran.toLowerCase().includes(santriSearchTerm.toLowerCase())
+    );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -269,23 +279,68 @@ export function PembayaranManager({
 
               {/* Step 1: Select Student */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">{`Pilih ${santriTerm} *`}</label>
-                  <select
-                    id="select-pay-student"
-                    value={selectedSantriId}
-                    onChange={(e) => setSelectedSantriId(e.target.value)}
-                    className="px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-emerald-500 w-full bg-slate-50 font-medium"
-                  >
-                    <option value="">{`-- Pilih ${santriTerm} --`}</option>
-                    {santriList
-                      .filter(s => s.status !== 'Lunas')
-                      .map(s => (
-                        <option key={s.nomorPendaftaran} value={s.nomorPendaftaran}>
-                          {s.nomorPendaftaran} - {s.nama}
-                        </option>
-                      ))}
-                  </select>
+                <div className="relative">
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">{`Cari ${santriTerm} *`}</label>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder={`Ketik nama atau No. Reg ${santriTermLower}...`}
+                      value={santriSearchTerm}
+                      onChange={(e) => {
+                        setSantriSearchTerm(e.target.value);
+                        setIsSantriDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsSantriDropdownOpen(true)}
+                      className="pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-emerald-500 w-full bg-slate-50 font-medium"
+                    />
+                    {selectedSantriId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSantriId('');
+                          setSantriSearchTerm('');
+                        }}
+                        className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Results */}
+                  {isSantriDropdownOpen && (santriSearchTerm || filteredSantris.length > 0) && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                      {filteredSantris.length > 0 ? (
+                        filteredSantris.map((s) => (
+                          <button
+                            key={s.nomorPendaftaran}
+                            type="button"
+                            onClick={() => {
+                              setSelectedSantriId(s.nomorPendaftaran);
+                              setSantriSearchTerm(s.nama);
+                              setIsSantriDropdownOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors flex flex-col cursor-pointer"
+                          >
+                            <span className="text-xs font-bold text-slate-800">{s.nama}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{s.nomorPendaftaran} - {s.jenjang}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-3 py-3 text-center text-xs text-slate-400 italic">
+                          Tidak ditemukan {santriTermLower} yang sesuai.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Backdrop to close dropdown */}
+                  {isSantriDropdownOpen && (
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsSantriDropdownOpen(false)}
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -639,12 +694,24 @@ export function PembayaranManager({
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Print Receipt Action */}
                           <button
-                            id={`btn-print-${p.nomorTransaksi.toLowerCase()}`}
+                            id={`btn-view-${p.nomorTransaksi.toLowerCase()}`}
                             onClick={() => onPrintKwitansi(p)}
-                            className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-slate-100 rounded-md transition-all cursor-pointer"
-                            title="Buka & Cetak Kwitansi"
+                            className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-slate-100 rounded-md transition-all cursor-pointer"
+                            title="Lihat Kwitansi"
                           >
                             <Eye size={14} />
+                          </button>
+                          
+                          <button
+                            id={`btn-print-${p.nomorTransaksi.toLowerCase()}`}
+                            onClick={() => {
+                              const url = `${window.location.origin}${window.location.pathname}?print=kwitansi&id=${p.nomorTransaksi}`;
+                              window.open(url, '_blank');
+                            }}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-md transition-all cursor-pointer"
+                            title="Cetak Kwitansi Langsung"
+                          >
+                            <Printer size={14} />
                           </button>
 
                           {/* Cancel Payment Action (Only Admin, only if currently sukses) */}

@@ -1,4 +1,4 @@
-export type Role = 'Superadmin' | 'Admin Putri' | 'Admin Putra' | 'Admin Umum';
+export type Role = 'Master' | 'Admin Umum' | 'Admin Putra' | 'Admin Putri' | 'Bendahara Umum' | 'Bendahara Putra' | 'Bendahara Putri';
 
 export interface User {
   username: string;

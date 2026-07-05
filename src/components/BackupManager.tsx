@@ -18,8 +18,9 @@ interface BackupManagerProps {
 }
 
 export function BackupManager({ activeRole, currentUser, state, onRestoreBackup, onResetToDefault, onAddSantri, onAddSantriBulk }: BackupManagerProps) {
-  const isAuthorized = activeRole === 'Superadmin';
+  const isAuthorized = activeRole === 'Master';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
 
   // States
   const [dragActive, setDragActive] = useState(false);
@@ -33,6 +34,178 @@ export function BackupManager({ activeRole, currentUser, state, onRestoreBackup,
   });
   const [importingSheet, setImportingSheet] = useState(false);
   const [isLinkEditing, setIsLinkEditing] = useState(!localStorage.getItem('wahyu_spreadsheet_link'));
+
+  const masterUser = state?.usersList?.find(u => u.role === 'Master');
+  const masterPassword = masterUser?.password || 'manajer123';
+
+  const downloadExcelTemplate = () => {
+    const headers = [
+      'nomorPendaftaran', 'nama', 'jenisKelamin', 'jenjang', 'tempatLahir', 'tanggalLahir', 
+      'alamat', 'rt', 'rw', 'desa', 'kecamatan', 'kabupatenKota', 'provinsi', 'kodePos', 'nik', 'noKk', 'anakKe', 'jumlahSaudara', 
+      'asalSekolah', 'npsnAsal', 'alamatSekolahAsal', 'nisn', 'mendaftarKelas', 
+      'namaAyah', 'nikAyah', 'statusAyah', 'tempatLahirAyah', 'tanggalLahirAyah', 'pendidikanAyah', 'pekerjaanAyah', 'penghasilanAyah', 'noHpAyah',
+      'namaIbu', 'nikIbu', 'statusIbu', 'tempatLahirIbu', 'tanggalLahirIbu', 'pendidikanIbu', 'pekerjaanIbu', 'penghasilanIbu', 'noHpIbu',
+      'namaWali', 'nikWali', 'tempatLahirWali', 'tanggalLahirWali', 'pendidikanWali', 'pekerjaanWali', 'penghasilanWali', 'noHpWali',
+      'nomorHpOrangTua', 'gelombangPendaftaran', 'tanggalDaftar'
+    ];
+    
+    const ws = XLSX.utils.json_to_sheet([
+      {
+        nomorPendaftaran: '2026001',
+        nama: 'Ahmad Muhammad Khusaeiri',
+        jenisKelamin: 'Laki-laki',
+        jenjang: 'SMP AL-HIDAYAH',
+        tempatLahir: 'Jombang',
+        tanggalLahir: '2012-05-15',
+        alamat: 'Jl. Pesantren No. 10',
+        rt: '02',
+        rw: '05',
+        desa: 'Cukir',
+        kecamatan: 'Diwek',
+        kabupatenKota: 'Jombang',
+        provinsi: 'Jawa Timur',
+        kodePos: '61471',
+        nik: '3512010101010001',
+        noKk: '3512010101010001',
+        anakKe: '1',
+        jumlahSaudara: '3',
+        asalSekolah: 'SDN Cukir 1',
+        npsnAsal: '20503001',
+        alamatSekolahAsal: 'Jl. Raya Cukir',
+        nisn: '0123456789',
+        mendaftarKelas: '7',
+        namaAyah: 'H. Abdullah',
+        nikAyah: '3512010101010002',
+        statusAyah: 'Hidup',
+        tempatLahirAyah: 'Jombang',
+        tanggalLahirAyah: '1980-01-01',
+        pendidikanAyah: 'S1',
+        pekerjaanAyah: 'Wiraswasta',
+        penghasilanAyah: 'Rp 3.000.000',
+        noHpAyah: '08123456789',
+        namaIbu: 'Hj. Fatimah',
+        nikIbu: '3512010101010003',
+        statusIbu: 'Hidup',
+        tempatLahirIbu: 'Kediri',
+        tanggalLahirIbu: '1985-02-02',
+        pendidikanIbu: 'SMA',
+        pekerjaanIbu: 'Ibu Rumah Tangga',
+        penghasilanIbu: '-',
+        noHpIbu: '08123456788',
+        namaWali: '',
+        nikWali: '',
+        tempatLahirWali: '',
+        tanggalLahirWali: '',
+        pendidikanWali: '',
+        pekerjaanWali: '',
+        penghasilanWali: '',
+        noHpWali: '',
+        nomorHpOrangTua: '08123456789',
+        gelombangPendaftaran: 'Gelombang 1',
+        tanggalDaftar: new Date().toISOString().split('T')[0]
+      }
+    ], { header: headers });
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Santri");
+    XLSX.writeFile(wb, "Template_Data_Lengkap_Santri.xlsx");
+  };
+
+  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json<any>(worksheet);
+        
+        const newSantris: any[] = [];
+
+        json.forEach((row) => {
+          if (row.nama) {
+            newSantris.push({
+              nomorPendaftaran: row.nomorPendaftaran ? String(row.nomorPendaftaran) : `REG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              nama: row.nama,
+              jenisKelamin: (row.jenisKelamin === 'Perempuan' || row.jenisKelamin === 'P' || row.jenisKelamin?.toLowerCase() === 'perempuan') ? 'Perempuan' : 'Laki-laki',
+              tempatLahir: row.tempatLahir || '',
+              tanggalLahir: row.tanggalLahir || '',
+              alamat: row.alamat || '',
+              rt: String(row.rt || ''),
+              rw: String(row.rw || ''),
+              desa: row.desa || '',
+              kecamatan: row.kecamatan || '',
+              kabupatenKota: row.kabupatenKota || '',
+              provinsi: row.provinsi || '',
+              kodePos: String(row.kodePos || ''),
+              nik: String(row.nik || ''),
+              noKk: String(row.noKk || ''),
+              anakKe: String(row.anakKe || ''),
+              jumlahSaudara: String(row.jumlahSaudara || ''),
+              asalSekolah: row.asalSekolah || '',
+              npsnAsal: String(row.npsnAsal || ''),
+              alamatSekolahAsal: row.alamatSekolahAsal || '',
+              nisn: String(row.nisn || ''),
+              mendaftarKelas: String(row.mendaftarKelas || ''),
+              namaAyah: row.namaAyah || '',
+              nikAyah: String(row.nikAyah || ''),
+              statusAyah: (row.statusAyah === 'Wafat') ? 'Wafat' : 'Hidup',
+              tempatLahirAyah: row.tempatLahirAyah || '',
+              tanggalLahirAyah: row.tanggalLahirAyah || '',
+              pendidikanAyah: row.pendidikanAyah || '',
+              pekerjaanAyah: row.pekerjaanAyah || '',
+              penghasilanAyah: row.penghasilanAyah || '',
+              noHpAyah: String(row.noHpAyah || ''),
+              namaIbu: row.namaIbu || '',
+              nikIbu: String(row.nikIbu || ''),
+              statusIbu: (row.statusIbu === 'Wafat') ? 'Wafat' : 'Hidup',
+              tempatLahirIbu: row.tempatLahirIbu || '',
+              tanggalLahirIbu: row.tanggalLahirIbu || '',
+              pendidikanIbu: row.pendidikanIbu || '',
+              pekerjaanIbu: row.pekerjaanIbu || '',
+              penghasilanIbu: row.penghasilanIbu || '',
+              noHpIbu: String(row.noHpIbu || ''),
+              namaWali: row.namaWali || '',
+              nikWali: String(row.nikWali || ''),
+              tempatLahirWali: row.tempatLahirWali || '',
+              tanggalLahirWali: row.tanggalLahirWali || '',
+              pendidikanWali: row.pendidikanWali || '',
+              pekerjaanWali: row.pekerjaanWali || '',
+              penghasilanWali: row.penghasilanWali || '',
+              noHpWali: String(row.noHpWali || ''),
+              nomorHpOrangTua: String(row.nomorHpOrangTua || ''),
+              jenjang: (state?.appSettings?.jenjangOptions || ['SDI AL-HIDAYAH', 'SMP AL-HIDAYAH', 'SMK AL-HIDAYAH']).includes(row.jenjang) ? row.jenjang : (state?.appSettings?.jenjangOptions?.[0] || 'SMP AL-HIDAYAH'),
+              gelombangPendaftaran: (state?.appSettings?.gelombangOptions || ['Gelombang 1', 'Gelombang 2', 'Gelombang 3']).includes(row.gelombangPendaftaran) ? row.gelombangPendaftaran : (state?.appSettings?.gelombangOptions?.[0] || 'Gelombang 1'),
+              statusValidasi: 'Belum Divalidasi',
+              berkas: { kk: false, akta: false, ktpOrtu: false, sklIjazah: false },
+              tanggalDaftar: row.tanggalDaftar ? String(row.tanggalDaftar) : new Date().toISOString().split('T')[0],
+            });
+          }
+        });
+
+        if (newSantris.length > 0 && onAddSantriBulk) {
+          const result = onAddSantriBulk(newSantris);
+          if (result && result.success) {
+            setSuccessMsg(`🟢 Berhasil mengimpor ${result.count} data santri dari file Excel!`);
+          } else {
+            setErrorMsg(result?.error || 'Gagal mengimpor data santri dari Excel.');
+          }
+        } else {
+          setErrorMsg('Tidak ada data santri yang valid ditemukan dalam berkas Excel.');
+        }
+      } catch (err) {
+        setErrorMsg('Gagal membaca file Excel. Pastikan formatnya sesuai.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    if (excelFileInputRef.current) {
+      excelFileInputRef.current.value = '';
+    }
+  };
 
   const handleSaveSpreadsheetLink = () => {
     if (spreadsheetLink.trim() !== '') {
@@ -380,8 +553,12 @@ export function BackupManager({ activeRole, currentUser, state, onRestoreBackup,
   };
 
   const handleModalConfirm = () => {
-    if (password !== currentUser.password) {
-      setErrorMsg('Password salah.');
+    // Find the Master user's password from the users list
+    const masterUser = state?.usersList?.find(u => u.role === 'Master');
+    const masterPassword = masterUser?.password || 'manajer123';
+
+    if (password !== masterPassword) {
+      setErrorMsg('Password Master salah.');
       return;
     }
     
@@ -508,6 +685,49 @@ export function BackupManager({ activeRole, currentUser, state, onRestoreBackup,
 
       </div>
 
+      {/* Card: Excel Import & Template Download */}
+      <div className="bg-white border border-slate-100 rounded-xl p-6 shadow-xs space-y-4 md:col-span-2">
+        <div className="space-y-2">
+          <div className="bg-emerald-50 text-emerald-700 w-10 h-10 rounded-lg flex items-center justify-center border border-emerald-100">
+            <FileSpreadsheet size={20} />
+          </div>
+          <h3 className="text-sm font-semibold text-slate-800">Impor & Unduh Template Excel</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Unduh format template Excel resmi dan unggah kembali file Excel yang telah terisi data {getTerminology(state?.appSettings)} untuk mendaftarkan secara massal.
+          </p>
+        </div>
+
+        {canModify ? (
+          <div className="flex flex-wrap gap-3 mt-4">
+            <input 
+              type="file" 
+              ref={excelFileInputRef} 
+              onChange={handleExcelImport} 
+              accept=".xlsx,.xls" 
+              className="hidden" 
+            />
+            <button
+              onClick={() => excelFileInputRef.current?.click()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
+            >
+              <Upload size={16} />
+              Unggah File Excel
+            </button>
+            <button
+              onClick={downloadExcelTemplate}
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <Download size={16} />
+              Unduh Template Excel
+            </button>
+          </div>
+        ) : (
+          <div className="bg-amber-50 text-amber-700 text-xs px-3 py-2 rounded-xl font-semibold border border-amber-200 inline-block mt-2">
+            Hanya bisa diakses oleh role super admin
+          </div>
+        )}
+      </div>
+
       {/* Card 3: Google Sheets Import */}
       <div className="bg-white border border-slate-100 rounded-xl p-6 shadow-xs space-y-4 md:col-span-2">
         <div className="space-y-2">
@@ -614,18 +834,50 @@ export function BackupManager({ activeRole, currentUser, state, onRestoreBackup,
                 Konfirmasi Reset Pabrik
               </h2>
               <p className="text-xs text-slate-600 mb-6">
-                Masukkan password akun Anda untuk melanjutkan aksi ini.
+                Aksi ini akan menghapus seluruh data transaksi dan pendaftaran. Masukkan password akun <strong className="text-slate-900">Master</strong> untuk melanjutkan.
               </p>
               
               <div className="mb-6">
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Password *</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-600">Password Master *</label>
+                  {password !== '' && (
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                      password === masterPassword ? 'text-emerald-600' : 'text-red-500'
+                    }`}>
+                      {password === masterPassword ? 'Benar' : 'Salah'}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Masukkan password..."
+                  className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-hidden focus:ring-2 ${
+                    password === ''
+                      ? 'border-slate-200 focus:ring-emerald-500'
+                      : password === masterPassword
+                        ? 'border-emerald-500 bg-emerald-50/10 focus:ring-emerald-500'
+                        : 'border-red-300 bg-red-50/10 focus:ring-red-500'
+                  }`}
+                  placeholder="Masukkan password master..."
                 />
+                {password !== '' && (
+                  <p className={`text-[10px] mt-1.5 font-medium flex items-center gap-1 ${
+                    password === masterPassword ? 'text-emerald-700' : 'text-red-600'
+                  }`}>
+                    {password === masterPassword ? (
+                      <>
+                        <CheckCircle size={12} className="shrink-0 text-emerald-600" />
+                        <span>benar</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle size={12} className="shrink-0 text-red-500" />
+                        <span>Password salah. Silakan periksa kembali.</span>
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
               
               <div className="flex gap-2">

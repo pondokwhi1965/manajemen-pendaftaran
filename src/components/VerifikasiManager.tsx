@@ -255,17 +255,10 @@ export function VerifikasiManager({ santriList, activeRole, onEditSantri, onDele
               </span>
               <div className="flex gap-2">
                 <button onClick={() => handleBulkUpdateStatus('Valid')} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer">
-                  Tandai Valid
+                  Tandai Verifikasi
                 </button>
                 <button onClick={() => handleBulkUpdateStatus('Tidak Valid')} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg cursor-pointer">
                   Tandai Tidak Valid
-                </button>
-                <button 
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RefreshCw size={12} className="hidden" />
-                  Hapus Terpilih
                 </button>
               </div>
             </div>

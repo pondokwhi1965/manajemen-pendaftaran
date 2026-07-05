@@ -19,8 +19,8 @@ export function BiayaManager({
   onDeleteBiaya,
   appSettings,
 }: BiayaManagerProps) {
-  const isAuthorized = activeRole === 'Superadmin';
-  const canModify = activeRole === 'Superadmin';
+  const isAuthorized = activeRole === 'Master';
+  const canModify = activeRole === 'Master';
 
   // State Management
   const [showAddForm, setShowAddForm] = useState(false);

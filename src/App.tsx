@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAppState } from './hooks/useAppState';
+import { useAppState, defaultUsersList } from './hooks/useAppState';
 import { Dashboard } from './components/Dashboard';
 import { SantriManager } from './components/SantriManager';
 import { BiayaManager } from './components/BiayaManager';
 import { PembayaranManager } from './components/PembayaranManager';
 import { DataPembayaranManager } from './components/DataPembayaranManager';
 import { KwitansiViewer } from './components/KwitansiViewer';
+import { RegistrationCardViewer } from './components/RegistrationCardViewer';
+import { PaymentSummaryViewer } from './components/PaymentSummaryViewer';
 import { LaporanManager } from './components/LaporanManager';
 import { PenggunaManager } from './components/PenggunaManager';
 import { BackupManager } from './components/BackupManager';
@@ -117,8 +119,30 @@ export default function App() {
     setPreSelectedMasterSantriId(undefined);
   };
 
-  // Active Kwitansi printing object
+  // Active printing states
   const [activeKwitansi, setActiveKwitansi] = useState<Pembayaran | null>(null);
+  const [activeRegistrationCard, setActiveRegistrationCard] = useState<any | null>(null);
+  const [activeSummarySantri, setActiveSummarySantri] = useState<any | null>(null);
+
+  // Handle Print via URL Parameters (for "Open in New Tab" feature)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const printType = params.get('print');
+    const id = params.get('id');
+
+    if (printType && id && state?.santriList) {
+      if (printType === 'kwitansi') {
+        const p = state.pembayaranList.find(item => item.nomorTransaksi === id);
+        if (p) setActiveKwitansi(p);
+      } else if (printType === 'card') {
+        const s = state.santriList.find(item => item.nomorPendaftaran === id);
+        if (s) setActiveRegistrationCard(s);
+      } else if (printType === 'summary') {
+        const s = state.santriList.find(item => item.nomorPendaftaran === id);
+        if (s) setActiveSummarySantri(s);
+      }
+    }
+  }, [state?.santriList?.length, state?.pembayaranList?.length]);
 
   // Mobile sidebar drawer toggle
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -168,15 +192,16 @@ export default function App() {
   const loginRequired = state.loginSettings?.loginRequired || false;
 
   const getFilteredState = () => {
-    // Filter santriList
+    // Filter santriList based on gender-specific roles
     const filteredSantriList = state.santriList.filter(s => {
-      if (currentUser.role === 'Admin Putri') {
+      if (currentUser.role === 'Admin Putri' || currentUser.role === 'Bendahara Putri') {
         return s.jenisKelamin === 'Perempuan';
       }
-      if (currentUser.role === 'Admin Putra') {
+      if (currentUser.role === 'Admin Putra' || currentUser.role === 'Bendahara Putra') {
         return s.jenisKelamin === 'Laki-laki';
       }
-      return true; // Superadmin & Admin Umum see all
+      // Master, Admin Umum, and Bendahara Umum see all
+      return true;
     });
 
     const allowedNoRegs = new Set(filteredSantriList.map(s => s.nomorPendaftaran));
@@ -213,9 +238,9 @@ export default function App() {
   const handleLogout = () => {
     sessionStorage.removeItem('wahyu_hidayat_is_logged_in');
     setSessionLoggedIn(false);
-    // Switch back to admin or default
-    const adminUser = state?.usersList?.find(u => u.role === 'Superadmin') || { username: 'superadmin', name: 'Afif Muzakky', role: 'Superadmin' as const };
-    changeCurrentUser(adminUser);
+    // Switch back to master or default
+    const masterUser = state?.usersList?.find(u => u.role === 'Master') || defaultUsersList[0];
+    changeCurrentUser(masterUser);
     setActiveTab('dashboard');
   };
 
@@ -252,80 +277,79 @@ export default function App() {
     setPreSelectedSantriId(undefined);
   };
 
-  // Nav items definition with role authorization details
-  const navItems = [
+  const navGroups = [
     {
-      id: 'dashboard' as const,
-      label: 'Dashboard Utama',
-      icon: LayoutDashboard,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
+      label: 'Dashboard',
+      items: [
+        { 
+          id: 'dashboard' as const, 
+          label: 'Dashboard Utama', 
+          icon: LayoutDashboard, 
+          allowed: ['Master', 'Admin Umum', 'Admin Putra', 'Admin Putri', 'Bendahara Umum', 'Bendahara Putra', 'Bendahara Putri'] 
+        }
+      ]
     },
     {
-      id: 'santri' as const,
-      label: `Master Data ${getTerminology(state?.appSettings, { capitalize: true })} Baru`,
-      icon: Users,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
+      label: 'ADMIN',
+      items: [
+        { 
+          id: 'santri' as const, 
+          label: 'Data Santri Baru', 
+          icon: Users, 
+          allowed: ['Master', 'Admin Umum', 'Admin Putra', 'Admin Putri'] 
+        },
+        { 
+          id: 'konfirmasi' as const, 
+          label: 'Konfirmasi Diterima', 
+          icon: UserCheck, 
+          allowed: ['Master', 'Admin Umum', 'Admin Putra', 'Admin Putri'] 
+        },
+        { 
+          id: 'verifikasi' as const, 
+          label: 'Verifikasi Data', 
+          icon: ShieldCheck, 
+          allowed: ['Master', 'Admin Umum', 'Admin Putra', 'Admin Putri'] 
+        },
+        { 
+          id: 'berkas' as const, 
+          label: 'Kelengkapan Berkas', 
+          icon: FileCheck, 
+          allowed: ['Master', 'Admin Umum', 'Admin Putra', 'Admin Putri'] 
+        },
+      ]
     },
     {
-      id: 'konfirmasi' as const,
-      label: 'Konfirmasi Diterima',
-      icon: UserCheck,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
+      label: 'PEMBAYARAN',
+      items: [
+        { 
+          id: 'pembayaran' as const, 
+          label: 'Loket Bayar', 
+          icon: CreditCard, 
+          allowed: ['Master', 'Bendahara Umum', 'Bendahara Putra', 'Bendahara Putri'] 
+        },
+        { 
+          id: 'data_pembayaran' as const, 
+          label: 'Data Pembayaran', 
+          icon: Receipt, 
+          allowed: ['Master', 'Bendahara Umum', 'Bendahara Putra', 'Bendahara Putri'] 
+        },
+        { 
+          id: 'laporan' as const, 
+          label: 'Laporan Keuangan', 
+          icon: FileText, 
+          allowed: ['Master', 'Bendahara Umum', 'Bendahara Putra', 'Bendahara Putri'] 
+        },
+      ]
     },
     {
-      id: 'verifikasi' as const,
-      label: 'Verifikasi Data',
-      icon: ShieldCheck,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
-    },
-    {
-      id: 'berkas' as const,
-      label: 'Kelengkapan Berkas',
-      icon: FileCheck,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
-    },
-    {
-      id: 'pembayaran' as const,
-      label: 'Loket Pembayaran',
-      icon: CreditCard,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
-    },
-    {
-      id: 'data_pembayaran' as const,
-      label: 'Data Pembayaran',
-      icon: Receipt,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
-    },
-    {
-      id: 'biaya' as const,
-      label: 'Master Biaya',
-      icon: BadgeCent,
-      allowed: ['Superadmin'],
-    },
-    {
-      id: 'laporan' as const,
-      label: 'Laporan Keuangan',
-      icon: FileText,
-      allowed: ['Superadmin', 'Admin Putri', 'Admin Putra', 'Admin Umum'],
-    },
-    {
-      id: 'pengguna' as const,
-      label: 'Manajemen Staff',
-      icon: ShieldAlert,
-      allowed: ['Superadmin'],
-    },
-    {
-      id: 'backup' as const,
-      label: 'Backup & Database',
-      icon: Database,
-      allowed: ['Superadmin'],
-    },
-    {
-      id: 'settings' as const,
-      label: 'Pengaturan Aplikasi',
-      icon: Settings,
-      allowed: ['Superadmin'],
-    },
+      label: 'MASTER',
+      items: [
+        { id: 'biaya' as const, label: 'Biaya Tanggungan', icon: BadgeCent, allowed: ['Master'] },
+        { id: 'pengguna' as const, label: 'Manajemen Staff', icon: ShieldAlert, allowed: ['Master'] },
+        { id: 'backup' as const, label: 'Backup & Database', icon: Database, allowed: ['Master'] },
+        { id: 'settings' as const, label: 'Pengaturan Aplikasi', icon: Settings, allowed: ['Master'] },
+      ]
+    }
   ];
 
   return (
@@ -471,47 +495,53 @@ export default function App() {
 
             <div className="p-4 space-y-5 overflow-y-auto max-h-[calc(100vh-80px)] lg:max-h-none">
               {/* Nav list */}
-              <nav className="space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isAllowed = item.allowed.includes(currentUser.role);
-                  const isActive = activeTab === item.id;
+              <nav className="space-y-4">
+                {navGroups.map((group) => (
+                  <div key={group.label} className="space-y-1">
+                    <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{group.label}</p>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isAllowed = item.allowed.includes(currentUser.role);
+                      const isActive = activeTab === item.id;
 
-                  return (
-                    <button
-                      key={item.id}
-                      id={`sidebar-tab-${item.id}`}
-                      disabled={!isAllowed}
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        setMobileSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-emerald-600 text-white shadow-md font-bold'
-                          : isAllowed
-                          ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                          : 'text-slate-300 cursor-not-allowed opacity-55'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon size={16} />
-                        <span>{item.label}</span>
-                      </div>
+                      return (
+                        <button
+                          key={item.id}
+                          id={`sidebar-tab-${item.id}`}
+                          disabled={!isAllowed}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            setMobileSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-emerald-600 text-white shadow-md font-bold'
+                              : isAllowed
+                              ? 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                              : 'text-slate-300 cursor-not-allowed opacity-55'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Icon size={16} />
+                            <span>{item.label}</span>
+                          </div>
 
-                      {!isAllowed && (
-                        <Lock size={12} className="text-slate-400" />
-                      )}
-                    </button>
-                  );
-                })}
+                          {!isAllowed && (
+                            <Lock size={12} className="text-slate-400" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </nav>
             </div>
           </div>
 
           {/* Sidebar Footer branding */}
-          <div className="p-4 border-t border-slate-100 text-center text-[10px] text-slate-400 font-mono">
-            <span>Sistem Informasi PSB v1.0</span>
+          <div className="pt-4 px-4 pb-6 border-t border-slate-100 text-center text-[10px] text-slate-400 font-medium leading-relaxed">
+            <p>Developed by AVHIEV PRODUCTION</p>
+            <p className="text-[9px] opacity-75">All Rights Reserved</p>
           </div>
         </aside>
 
@@ -611,8 +641,10 @@ export default function App() {
               <DataPembayaranManager
                 santriList={filteredState.santriList}
                 tagihanMap={filteredState.tagihanMap}
+                pembayaranList={filteredState.pembayaranList}
                 activeRole={currentUser.role}
                 onNavigateToPembayaran={handleQuickPayNavigation}
+                onPrintKwitansi={setActiveKwitansi}
                 appSettings={state.appSettings}
               />
             )}
@@ -671,6 +703,29 @@ export default function App() {
           pembayaran={activeKwitansi}
           onClose={() => setActiveKwitansi(null)}
           appSettings={state.appSettings}
+          autoPrint={true}
+        />
+      )}
+
+      {/* 5. REGISTRATION CARD PRINT OVERLAY */}
+      {activeRegistrationCard && (
+        <RegistrationCardViewer
+          santri={activeRegistrationCard}
+          onClose={() => setActiveRegistrationCard(null)}
+          appSettings={state.appSettings}
+          autoPrint={true}
+        />
+      )}
+
+      {/* 6. PAYMENT SUMMARY PRINT OVERLAY */}
+      {activeSummarySantri && (
+        <PaymentSummaryViewer
+          santri={activeSummarySantri}
+          tagihanMap={state.tagihanMap}
+          pembayaranList={state.pembayaranList}
+          appSettings={state.appSettings}
+          onClose={() => setActiveSummarySantri(null)}
+          autoPrint={true}
         />
       )}
     </div>

@@ -358,7 +358,10 @@ export function KonfirmasiManager({
                   {/* Actions Row */}
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => setSelectedForPrint(modalSantri)}
+                      onClick={() => {
+                        const url = `${window.location.origin}${window.location.pathname}?print=card&id=${modalSantri.nomorPendaftaran}`;
+                        window.open(url, '_blank');
+                      }}
                       className="flex items-center justify-center gap-2 p-4 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-2xl transition-all group"
                     >
                       <Printer size={18} className="text-slate-600 group-hover:text-emerald-600" />

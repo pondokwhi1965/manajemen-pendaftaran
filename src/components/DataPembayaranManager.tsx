@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Santri, Role, getTerminology } from '../types';
+import React, { useState, useRef } from 'react';
+import { Santri, Role, getTerminology, Pembayaran } from '../types';
 import { 
   Search, 
   CreditCard, 
@@ -13,23 +13,31 @@ import {
   BookOpen, 
   Layers,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Printer,
+  X,
+  FileText,
+  Clock
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DataPembayaranManagerProps {
   santriList: Santri[];
   tagihanMap: Record<string, { id: string; jenisBiaya: string; nominal: number; terbayar: number }[]>;
+  pembayaranList: Pembayaran[];
   activeRole: Role;
   onNavigateToPembayaran: (nomorPendaftaran: string) => void;
+  onPrintKwitansi: (pembayaran: Pembayaran) => void;
   appSettings: any;
 }
 
 export function DataPembayaranManager({
   santriList,
   tagihanMap,
+  pembayaranList,
   activeRole,
   onNavigateToPembayaran,
+  onPrintKwitansi,
   appSettings
 }: DataPembayaranManagerProps) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +48,7 @@ export function DataPembayaranManager({
   // Detail Modal States
   const [selectedSantri, setSelectedSantri] = useState<Santri | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'view' | 'print'>('view');
 
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({
@@ -117,8 +126,9 @@ export function DataPembayaranManager({
     return 0;
   });
 
-  const openDetailModal = (s: Santri) => {
+  const openDetailModal = (s: Santri, mode: 'view' | 'print' = 'view') => {
     setSelectedSantri(s);
+    setModalMode(mode);
     setShowDetailModal(true);
   };
 
@@ -353,11 +363,22 @@ export function DataPembayaranManager({
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button
-                            onClick={() => openDetailModal(s)}
+                            onClick={() => openDetailModal(s, 'view')}
                             className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-slate-50 rounded-lg transition-all cursor-pointer"
                             title="Rincian Tagihan & Pembayaran"
                           >
                             <Eye size={15} />
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const url = `${window.location.origin}${window.location.pathname}?print=summary&id=${s.nomorPendaftaran}`;
+                              window.open(url, '_blank');
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-slate-50 rounded-lg transition-all cursor-pointer"
+                            title="Cetak Rincian"
+                          >
+                            <Printer size={15} />
                           </button>
                           
                           {computedStatus !== 'Lunas' && (
@@ -389,104 +410,151 @@ export function DataPembayaranManager({
 
       {/* DETAIL MODAL */}
       {showDetailModal && selectedSantri && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto no-print">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header */}
-            <div className="bg-emerald-950 text-white px-6 py-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm tracking-tight">Rincian Pembayaran {getTerminology(appSettings, { capitalize: true })}</h3>
-                <p className="text-[10px] text-emerald-300">No. Registrasi: {selectedSantri.nomorPendaftaran}</p>
-              </div>
-              <button 
-                onClick={() => setShowDetailModal(false)}
-                className="text-white hover:text-emerald-200 p-1 rounded-lg hover:bg-white/10"
-              >
-                Tutup
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="bg-emerald-950 text-white px-6 py-4 flex items-center justify-between no-print">
                 <div>
-                  <span className="text-slate-400 block font-bold uppercase tracking-wider text-[10px]">Nama {getTerminology(appSettings, { capitalize: true })}</span>
-                  <span className="text-sm font-bold text-slate-800">{selectedSantri.nama}</span>
+                  <h3 className="font-bold text-sm tracking-tight">Rincian Pembayaran {getTerminology(appSettings, { capitalize: true })}</h3>
+                  <p className="text-[10px] text-emerald-300">No. Registrasi: {selectedSantri.nomorPendaftaran}</p>
                 </div>
-                <div>
-                  <span className="text-slate-400 block font-bold uppercase tracking-wider text-[10px]">Jenjang / Gelombang</span>
-                  <span className="text-sm font-bold text-slate-800">{selectedSantri.jenjang} / {selectedSantri.gelombangPendaftaran}</span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowDetailModal(false)}
+                    className="text-white hover:text-emerald-200 p-1 rounded-lg hover:bg-white/10"
+                  >
+                    Tutup
+                  </button>
                 </div>
               </div>
 
-              <hr className="border-slate-100" />
-
-              {/* Rincian Tagihan */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daftar Tagihan Alokasi Biaya</h4>
-                <div className="border border-slate-100 rounded-xl overflow-hidden text-xs">
-                  <div className="bg-slate-50 px-3 py-2 font-bold text-slate-500 border-b border-slate-100 flex justify-between">
-                    <span>Jenis Biaya</span>
-                    <div className="flex gap-12 font-mono">
-                      <span>Tagihan</span>
-                      <span>Terbayar</span>
-                    </div>
+              {/* Content */}
+              <div id="student-payment-detail" className="p-6 space-y-6 print:p-0 printable">
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 block font-bold uppercase tracking-wider text-[10px]">Nama {getTerminology(appSettings, { capitalize: true })}</span>
+                    <span className="text-sm font-bold text-slate-800">{selectedSantri.nama}</span>
                   </div>
+                  <div>
+                    <span className="text-slate-400 block font-bold uppercase tracking-wider text-[10px]">Jenjang / Gelombang</span>
+                    <span className="text-sm font-bold text-slate-800">{selectedSantri.jenjang} / {selectedSantri.gelombangPendaftaran}</span>
+                  </div>
+                </div>
 
-                  <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
-                    {getBillingSummary(selectedSantri.nomorPendaftaran).items.map((item) => {
-                      const sisa = item.nominal - item.terbayar;
-                      const isItemLunas = sisa <= 0;
-                      return (
-                        <div key={item.id} className="p-3 flex justify-between items-center bg-white hover:bg-slate-50/20">
-                          <div>
-                            <span className="font-semibold text-slate-700 block">{item.jenisBiaya}</span>
-                            {isItemLunas ? (
-                              <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1 py-0.2 rounded-xs font-bold mt-0.5 inline-block">LUNAS</span>
-                            ) : (
-                              <span className="text-[9px] text-slate-400 mt-0.5 inline-block font-mono">
-                                Sisa: Rp {sisa.toLocaleString('id-ID')}
+                <hr className="border-slate-100" />
+
+                {/* Rincian Tagihan */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <BadgeCent size={14} className="text-emerald-600" />
+                    Status Tagihan Alokasi Biaya
+                  </h4>
+                  <div className="border border-slate-100 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-slate-50 px-3 py-2.5 font-bold text-slate-500 border-b border-slate-100 flex justify-between uppercase tracking-tighter text-[9px]">
+                      <span>Jenis Biaya</span>
+                      <div className="flex gap-12 font-mono">
+                        <span className="w-20 text-right">Tagihan</span>
+                        <span className="w-20 text-right">Terbayar</span>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto print:max-h-none">
+                      {getBillingSummary(selectedSantri.nomorPendaftaran).items.map((item) => {
+                        const sisa = item.nominal - item.terbayar;
+                        const isItemLunas = sisa <= 0;
+                        return (
+                          <div key={item.id} className="p-3 flex justify-between items-center bg-white hover:bg-slate-50/20">
+                            <div>
+                              <span className="font-semibold text-slate-700 block">{item.jenisBiaya}</span>
+                              {isItemLunas ? (
+                                <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-bold mt-1 inline-block">LUNAS</span>
+                              ) : (
+                                <span className="text-[9px] text-slate-400 mt-1 inline-block font-mono">
+                                  Sisa Piutang: Rp {sisa.toLocaleString('id-ID')}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-8 font-mono font-medium text-right shrink-0">
+                              <span className="text-slate-600 w-20">Rp {item.nominal.toLocaleString('id-ID')}</span>
+                              <span className={`w-20 ${item.terbayar > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}`}>
+                                Rp {item.terbayar.toLocaleString('id-ID')}
                               </span>
-                            )}
+                            </div>
                           </div>
-                          <div className="flex gap-8 font-mono font-medium text-right shrink-0">
-                            <span className="text-slate-600">Rp {item.nominal.toLocaleString('id-ID')}</span>
-                            <span className={item.terbayar > 0 ? 'text-emerald-600 font-semibold' : 'text-slate-400'}>
-                              Rp {item.terbayar.toLocaleString('id-ID')}
-                            </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* Aggregate */}
+                    {(() => {
+                      const bill = getBillingSummary(selectedSantri.nomorPendaftaran);
+                      return (
+                        <div className="bg-slate-100 p-4 border-t border-slate-200 space-y-2 font-medium text-xs print:bg-white">
+                          <div className="flex justify-between text-slate-600">
+                            <span>TOTAL TAGIHAN:</span>
+                            <span className="font-mono">Rp {bill.total.toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-emerald-700">
+                            <span>TOTAL TERBAYAR:</span>
+                            <span className="font-mono font-bold">Rp {bill.paid.toLocaleString('id-ID')}</span>
+                          </div>
+                          <div className="flex justify-between text-rose-700 font-black pt-2 border-t border-dashed border-slate-300 text-sm">
+                            <span>SISA PIUTANG:</span>
+                            <span className="font-mono">Rp {bill.sisa.toLocaleString('id-ID')}</span>
                           </div>
                         </div>
                       );
-                    })}
+                    })()}
                   </div>
+                </div>
 
-                  {/* Aggregate */}
-                  {(() => {
-                    const bill = getBillingSummary(selectedSantri.nomorPendaftaran);
-                    return (
-                      <div className="bg-slate-100 p-3.5 border-t border-slate-200 space-y-1.5 font-medium text-xs">
-                        <div className="flex justify-between text-slate-600">
-                          <span>Total Tagihan:</span>
-                          <span className="font-mono">Rp {bill.total.toLocaleString('id-ID')}</span>
+                {/* History Pembayaran (Receipts) */}
+                <div className="space-y-3 no-print">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <Clock size={14} className="text-blue-600" />
+                    Riwayat Kuitansi Pembayaran
+                  </h4>
+                  <div className="space-y-2">
+                    {pembayaranList
+                      .filter(p => p.nomorPendaftaran === selectedSantri.nomorPendaftaran && p.status !== 'Dibatalkan')
+                      .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+                      .map(p => (
+                        <div key={p.nomorTransaksi} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono font-bold text-slate-400">{p.nomorTransaksi}</span>
+                              <span className="text-[9px] font-bold bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded uppercase">{p.metodePembayaran}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">{p.tanggal}</div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <div className="text-xs font-bold text-slate-800">Rp {p.nominal.toLocaleString('id-ID')}</div>
+                            </div>
+                            <button
+                              onClick={() => onPrintKwitansi(p)}
+                              className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-[10px] font-bold border border-emerald-100"
+                              title="Cetak Kuitansi"
+                            >
+                              <Printer size={12} />
+                              Cetak
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-emerald-700">
-                          <span>Total Terbayar:</span>
-                          <span className="font-mono font-bold">Rp {bill.paid.toLocaleString('id-ID')}</span>
-                        </div>
-                        <div className="flex justify-between text-red-700 font-bold pt-1.5 border-t border-dashed border-slate-300">
-                          <span>Sisa Piutang:</span>
-                          <span className="font-mono text-sm">Rp {bill.sisa.toLocaleString('id-ID')}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                      ))}
+                    {pembayaranList.filter(p => p.nomorPendaftaran === selectedSantri.nomorPendaftaran && p.status !== 'Dibatalkan').length === 0 && (
+                      <p className="text-center py-4 text-[10px] text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        Belum ada riwayat pembayaran yang tercatat.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
             {/* Footer */}
-            <div className="bg-slate-50 px-6 py-4 flex justify-between gap-2 border-t border-slate-100">
+            <div className="bg-slate-50 px-6 py-4 flex justify-between gap-2 border-t border-slate-100 no-print">
               <div>
-                {getBillingSummary(selectedSantri.nomorPendaftaran).sisa > 0 && (
+                {modalMode === 'view' && getBillingSummary(selectedSantri.nomorPendaftaran).sisa > 0 && (
                   <button
                     onClick={() => {
                       setShowDetailModal(false);
