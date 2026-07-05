@@ -262,16 +262,16 @@ export function LandingPage({ appSettings, onAdminLogin, onSubmitRegistration, o
                   </div>
 
                   {/* Guide Button below image */}
-                  {appSettings.isGuideActive && (
+                  {appSettings.isGuideActive && appSettings.guideUrl && (
                     <motion.div 
                       variants={itemVariants}
-                      className="mt-6 flex justify-center"
+                      className="mt-6 flex justify-center relative z-50"
                     >
                       <a 
-                        href={appSettings.guideUrl} 
+                        href={appSettings.guideUrl.startsWith('http') ? appSettings.guideUrl : `https://${appSettings.guideUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-3 px-8 py-4 bg-white border-2 border-blue-100 text-blue-600 rounded-2xl font-bold text-sm shadow-xl shadow-blue-50 hover:bg-blue-50 hover:border-blue-200 transition-all active:scale-95 group cursor-pointer"
+                        className="inline-flex items-center gap-3 px-8 py-4 bg-white border-2 border-blue-100 text-blue-600 rounded-2xl font-bold text-sm shadow-xl shadow-blue-50 hover:bg-blue-50 hover:border-blue-200 transition-all active:scale-95 group cursor-pointer relative z-50"
                       >
                         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
                           <BookOpen size={18} className="stroke-[2.5]" />
